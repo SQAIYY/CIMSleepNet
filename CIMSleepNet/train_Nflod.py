@@ -62,16 +62,23 @@ def main(config, fold_id):
 
     # build optimizer
     trainable_params = filter(lambda p: p.requires_grad, model.parameters())
+    Miss_SC_trainable_params = filter(lambda p: p.requires_grad, model.parameters())
+    Miss_MSEx_trainable_params = filter(lambda p: p.requires_grad, model.parameters())
+    Miss_MSEh_trainable_params = filter(lambda p: p.requires_grad, model.parameters())
 
     optimizer = config.init_obj('optimizer', torch.optim, trainable_params)
+    Miss_SC_optimizer = config.init_obj('Miss_SC_optimizer', torch.optim, Miss_SC_trainable_params)
+    Miss_MSEx_optimizer = config.init_obj('Miss_MSEx_optimizer', torch.optim, Miss_MSEx_trainable_params)
+    Miss_MSEh_optimizer = config.init_obj('Miss_MSEh_optimizer', torch.optim, Miss_MSEh_trainable_params)
     trainer = Trainer(model, criterion, criterion_Miss_SC, criterion_Miss_MSE_x, criterion_Miss_MSE_h, metrics,
-                      optimizer,
+                      optimizer, Miss_SC_optimizer, Miss_MSEx_optimizer, Miss_MSEh_optimizer,
                       config=config,
                       data_loader=data_loader,
                       fold_id=fold_id,
                       valid_data_loader=valid_data_loader,
                       test_data_loader=test_data_loader,
                       class_weights=weights_for_each_class)
+
 
     trainer.train()
 
@@ -99,10 +106,8 @@ if __name__ == '__main__':
     fold_id = int(args2.fold_id)
 
     config = ConfigParser.from_args(args, fold_id, options)
-    if "shhs" in args2.np_data_dir:
-        folds_data = load_folds_data_shhs(args2.np_data_dir, config["data_loader"]["args"]["num_folds"])
-    else:
-        folds_data = load_folds_data(args2.np_data_dir, config["data_loader"]["args"]["num_folds"])
+
+    folds_data = load_folds_data(args2.np_data_dir, config["data_loader"]["args"]["num_folds"])
 
     main(config, fold_id)
 

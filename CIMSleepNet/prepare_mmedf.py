@@ -140,19 +140,29 @@ def make_chunk_missing_mask(n_epochs, missing_rate, chunk_epochs, seed):
     return eeg_mask, eog_mask
 
 
-def apply_missing_signal(x, mask):
-    """
-    x:
-        [n_epochs, 3000, 1]
+def apply_missing_signal(x, mask, seed):
 
-    mask:
-        [n_epochs]
+    rng = np.random.RandomState(seed)
 
-    这里是让整个 3000 点 epoch 缺失。
-    mask == 0 时，该 epoch 的 3000 个点全部置 0。
-    """
     x_miss = x.copy()
-    x_miss[mask == 0, :, :] = 0.0
+
+    missing_idx = np.where(mask == 0)[0]
+    valid_idx = np.where(mask == 1)[0]
+
+    if len(missing_idx) == 0:
+        return x_miss
+
+    if len(valid_idx) == 0:
+        raise RuntimeError("该模态没有可用于替换的未缺失 epoch")
+
+    replace_idx = rng.choice(
+        valid_idx,
+        size=len(missing_idx),
+        replace=True,
+    )
+
+    x_miss[missing_idx, :, :] = x[replace_idx, :, :]
+
     return x_miss
 
 
@@ -352,8 +362,17 @@ def main():
             seed=args.seed + i,
         )
 
-        x_EEG_miss = apply_missing_signal(x_EEG, eeg_mask)
-        x_EOG_miss = apply_missing_signal(x_EOG, eog_mask)
+        x_EEG_miss = apply_missing_signal(
+            x_EEG,
+            eeg_mask,
+            seed=args.seed + i * 2,
+        )
+
+        x_EOG_miss = apply_missing_signal(
+            x_EOG,
+            eog_mask,
+            seed=args.seed + i * 2 + 1,
+        )
 
         EEG_miss_labels = eeg_mask.astype(np.int64)
         EOG_miss_labels = eog_mask.astype(np.int64)
